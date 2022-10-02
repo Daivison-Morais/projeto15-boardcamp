@@ -10,6 +10,7 @@ import {
   putCustomers,
   getRentals,
   postRentals,
+  getIdCustomers,
 } from "./controllers.js";
 
 const app = express();
@@ -28,6 +29,7 @@ app.post("/games", postGames);
 
 app.get("/customers", getCustomers);
 app.post("/customers", postCustomers);
+app.get("/customers/:id", getIdCustomers);
 app.put("/customers/:id", putCustomers);
 
 app.get("/rentals", getRentals);

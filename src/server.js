@@ -35,6 +35,8 @@ app.put("/customers/:id", putCustomers);
 app.get("/rentals", getRentals);
 app.post("/rentals", postRentals);
 
+app.post("/rentals/:id/return", postRentalsReturn);
+
 app.listen(4000, () => {
   console.log("listen on 4000");
 });

@@ -11,6 +11,7 @@ import {
   getRentals,
   postRentals,
   getIdCustomers,
+  postRentalsReturn,
 } from "./controllers.js";
 
 const app = express();

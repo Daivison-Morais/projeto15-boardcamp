@@ -1,6 +1,7 @@
 import pkg from "pg";
 import joi from "joi";
 import dayjs from "dayjs";
+import convertMilisInDate from "./convertMillSegDate.js";
 
 const { Pool } = pkg;
 const connection = new Pool({
@@ -21,19 +22,20 @@ async function getCategories(req, res) {
     res.sendStatus(500);
   }
 }
-////////////EXISTENCIA - REGRAS DE NEGÓCIO
+
 async function postCategories(req, res) {
   const { name } = req.body;
   if (name === "") {
     return res.sendStatus(400);
   }
-  /* const nameExist = await connection.query(
-    `SELECT * FROM categories WHERE name = ${name};`
+  const nameExist = await connection.query(
+    `SELECT * FROM categories WHERE name = '${name}';`
   );
   console.log("aqui:", nameExist);
-  if (nameExist) {
-    return req.sendStatus(409); 
-  }*/
+  if (nameExist.rows.length > 0) {
+    return res.sendStatus(409);
+  }
+
   await connection.query("INSERT INTO categories (name) VALUES ($1);", [name]);
 
   try {
@@ -44,8 +46,17 @@ async function postCategories(req, res) {
   }
 }
 
-///////////////REGRAS DE NEGÓCIO - QUERY STRINGS
 async function getGames(req, res) {
+  const { name } = req.query;
+
+  if (name) {
+    const categories = await connection.query(
+      `SELECT games.*, categories.name AS "categorieName" FROM games JOIN categories ON games."categoryId" = categories.id WHERE games.name LIKE $1;`,
+      [`${name}%`]
+    );
+    return res.send(categories);
+  }
+
   const categories = await connection.query(
     `SELECT games.*, categories.name AS "categorieName" FROM games JOIN categories ON games."categoryId" = categories.id
   `
@@ -78,13 +89,13 @@ async function postGames(req, res) {
   }
 
   try {
-    /* const nameExist = await connection.query(
+    const nameExist = await connection.query(
       `SELECT * FROM games WHERE name = '${name}';`
     );
-    console.log("aqui", nameExist);
-    if (nameExist.rows == 0) {
+    console.log("aqui", nameExist.rows);
+    if (nameExist.rows.length === 0) {
       return res.sendStatus(409);
-    } */
+    }
 
     await connection.query(
       `INSERT INTO games (name, image, "stockTotal", "categoryId", "pricePerDay") VALUES ($1, $2, $3, $4, $5);`,
@@ -97,8 +108,7 @@ async function postGames(req, res) {
     res.sendStatus(500);
   }
 }
-/////////////////////////////////////////////////////////////////////
-///////// FILTRAR VIA QUERY STRING, POR UMA PARTE DO CPF
+
 async function getCustomers(req, res) {
   const clientes = await connection.query("SELECT * FROM customers;");
 
@@ -137,7 +147,7 @@ async function getIdCustomers(req, res) {
     res.sendStatus(500);
   }
 }
-/////////////// .isoDate()?
+
 const postCustomersSchema = joi.object({
   name: joi.string().required(),
   phone: joi.string().min(10).max(11).required(),
@@ -325,15 +335,34 @@ async function postRentalsReturn(req, res) {
   const { id } = req.params;
 
   try {
+    const rentalExist = await connection.query(
+      `SELECT * FROM rentals WHERE rentals.id = $1;`,
+      [id]
+    );
+
+    if (rentalExist.rows.length === 0) {
+      return res.status(404).send({ erro: "Aluguél não encontrado" });
+    }
+
     const rental = (
-      await connection.query(`SELECT * FROM rentals WHERE rentals.id = $1`, [
-        id,
-      ])
+      await connection.query(
+        `SELECT rentals.*, games."pricePerDay" FROM rentals JOIN games ON rentals."gameId" = games.id WHERE rentals.id = $1;`,
+        [id]
+      )
     ).rows[0];
 
     rental.returnDate = dayjs().format("YYYY-MM-DD");
 
-    console.log(rental);
+    /*  const delayfee =
+    Date.now() -[dayjs(rental.rentDate).valueOf() + rental.daysRented * 86400 * 1000];
+    console.log(rental.rentDate);
+    console.log(dayjs(rental.rentDate).valueOf());
+    console.log(rental.daysRented);
+    console.log(Date.now());
+
+    console.log(convertMilisInDate(delayfee)); */
+
+    //console.log(rental);
   } catch (error) {
     console.log(error);
     res.sendStatus(500);

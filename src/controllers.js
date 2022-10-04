@@ -198,13 +198,35 @@ async function putCustomers(req, res) {
 }
 
 async function getRentals(req, res) {
-  const { customerId } = req.query;
+  const { customerId, gamerId } = req.query;
   console.log(customerId);
 
   if (customerId) {
     const clientes = (
       await connection.query(
-        `SELECT rentals.*, json_build_object('id', customers.id, 'name', customers.name) AS customer, json_build_object('id', games.id, 'name', games.name, 'categoryId', "categoryId", 'categoryName', categories.name) AS game FROM rentals JOIN customers ON rentals."customerId" = customers.id  JOIN games ON  rentals."gameId" = games.id JOIN categories ON games."categoryId" = categories.id WHERE rentals.id = ${customerId};`
+        `SELECT rentals.*, json_build_object('id', customers.id, 'name', customers.name) AS customer, 
+        json_build_object('id', games.id, 'name', games.name, 'categoryId', "categoryId", 'categoryName', categories.name) AS game 
+        FROM rentals 
+        JOIN customers ON rentals."customerId" = customers.id  
+        JOIN games ON  rentals."gameId" = games.id JOIN categories ON games."categoryId" = categories.id 
+        WHERE rentals."customerId" = ${customerId};`
+      )
+    ).rows[0];
+
+    const cliente = { ...clientes, rentDate: dayjs().format("YYYY-MM-DD") };
+    return res.send(cliente);
+  }
+
+  if (gamerId) {
+    const clientes = (
+      await connection.query(
+        `SELECT rentals.*, json_build_object('id', customers.id, 'name', customers.name) AS customer, 
+        json_build_object('id', games.id, 'name', games.name, 'categoryId', "categoryId", 'categoryName', categories.name) AS game 
+        FROM rentals 
+        JOIN customers ON rentals."customerId" = customers.id  
+        JOIN games ON  rentals."gameId" = games.id 
+        JOIN categories ON games."categoryId" = categories.id 
+        WHERE rentals."gameId" = ${gamerId};`
       )
     ).rows[0];
 
@@ -299,7 +321,61 @@ async function postRentals(req, res) {
   }
 }
 
-async function postRentalsReturn(req, res) {}
+async function postRentalsReturn(req, res) {
+  const { id } = req.params;
+
+  try {
+    const rental = (
+      await connection.query(`SELECT * FROM rentals WHERE rentals.id = $1`, [
+        id,
+      ])
+    ).rows[0];
+
+    rental.returnDate = dayjs().format("YYYY-MM-DD");
+
+    console.log(rental);
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(500);
+  }
+}
+
+async function deleteRentals(req, res) {
+  const { id } = req.params;
+
+  const rentalExist = await connection.query(
+    `SELECT * FROM rentals WHERE rentals.id = $1;`,
+    [id]
+  );
+
+  if (rentalExist.rows.length === 0) {
+    return res.status(404).send({ erro: "Aluguél não encontrado" });
+  }
+
+  const rentalFinalizado = (
+    await connection.query(
+      `SELECT rentals."returnDate" FROM rentals WHERE rentals.id = $1;`,
+      [id]
+    )
+  ).rows[0];
+  console.log(rentalFinalizado);
+
+  if (rentalFinalizado.returnDate === null) {
+    return res.status(400).send({ erro: "aluguél não finalizado" });
+  }
+
+  const deleteRental = await connection.query(
+    `DELETE FROM rentals WHERE rentals.id = $1;`,
+    [id]
+  );
+
+  console.log(rentalExist.rows[0]);
+  try {
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(500);
+  }
+}
 
 export {
   getCategories,
@@ -313,4 +389,5 @@ export {
   postRentals,
   getIdCustomers,
   postRentalsReturn,
+  deleteRentals,
 };

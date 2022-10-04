@@ -12,6 +12,7 @@ import {
   postRentals,
   getIdCustomers,
   postRentalsReturn,
+  deleteRentals,
 } from "./controllers.js";
 
 const app = express();
@@ -35,8 +36,8 @@ app.put("/customers/:id", putCustomers);
 
 app.get("/rentals", getRentals);
 app.post("/rentals", postRentals);
-
 app.post("/rentals/:id/return", postRentalsReturn);
+app.delete("/rentals/:id", deleteRentals);
 
 app.listen(4000, () => {
   console.log("listen on 4000");
